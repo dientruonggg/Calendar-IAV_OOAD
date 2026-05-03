@@ -5,22 +5,32 @@
 @inject ISnackbar Snackbar
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudPaper Class="pa-4 mb-4 d-flex align-center">
-        <MudButton Variant="Variant.Outlined" OnClick="SetToday">Hôm nay</MudButton>
-        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="Previous" />
-        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="Next" />
-        <MudText Typo="Typo.h5" Class="ml-4 flex-grow-1">
+    <div class="d-flex align-center pa-4 mb-4" style="background: var(--surface-container-lowest); border-radius: var(--radius-lg); border: 1px solid var(--outline-variant); box-shadow: var(--shadow-level1);">
+        <div class="d-flex align-center gap-2">
+            <MudButton Variant="Variant.Outlined" OnClick="SetToday" Style="border-radius: var(--radius-md); text-transform: none; font-weight: 600;">Hôm nay</MudButton>
+            <div class="d-flex align-center">
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="Previous" Color="Color.Default" />
+                <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="Next" Color="Color.Default" />
+            </div>
+        </div>
+
+        <MudText Typo="Typo.h5" Class="ml-4 flex-grow-1" Style="font-weight: 700; color: var(--on-surface); letter-spacing: -0.01em;">
             @GetViewTitle()
         </MudText>
         
-        <MudToggleGroup T="string" @bind-Value="CurrentView" Variant="Variant.Outlined" Delimiters="true" Color="Color.Primary" SelectionMode="SelectionMode.SingleSelection">
-            <MudToggleItem Value="@("Daily")" Text="Ngày" />
-            <MudToggleItem Value="@("Weekly")" Text="Tuần" />
-            <MudToggleItem Value="@("Monthly")" Text="Tháng" />
-        </MudToggleGroup>
-        
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-4" StartIcon="@Icons.Material.Filled.Add" OnClick="() => OpenAddDialog(DateTime.Now)">Tạo cuộc hẹn</MudButton>
-    </MudPaper>
+        <div class="d-flex align-center gap-4">
+            <MudToggleGroup T="string" @bind-Value="CurrentView" Delimiters="false" Color="Color.Primary" SelectionMode="SelectionMode.SingleSelection" 
+                            Style="background: var(--surface-container-low); border-radius: var(--radius-md); padding: 2px;">
+                <MudToggleItem Value="@("Daily")" Text="Ngày" Class="px-4" />
+                <MudToggleItem Value="@("Weekly")" Text="Tuần" Class="px-4" />
+                <MudToggleItem Value="@("Monthly")" Text="Tháng" Class="px-4" />
+            </MudToggleGroup>
+            
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
+                        OnClick="() => OpenAddDialog(DateTime.Now)" 
+                        Style="border-radius: var(--radius-md); text-transform: none; font-weight: 600; padding: 8px 20px;">Tạo cuộc hẹn</MudButton>
+        </div>
+    </div>
 
     <MudPaper Class="pa-4">
         @if (isLoading)
