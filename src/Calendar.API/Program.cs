@@ -71,9 +71,19 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Automatically Apply Migrations on startup
-using (var scope = app.Services.CreateScope())
+// Validate JWT key is not the placeholder value in non-Development environments
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (!app.Environment.IsDevelopment() &&
+    (string.IsNullOrWhiteSpace(jwtKey) || jwtKey == "YOUR_SUPER_SECRET_JWT_KEY_REPLACE_ME_BEFORE_PRODUCTION!"))
 {
+    throw new InvalidOperationException(
+        "JWT signing key is not configured. Set the 'Jwt:Key' configuration value before running in production.");
+}
+
+// Apply EF Core migrations automatically in Development only
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<CalendarDbContext>();
     dbContext.Database.Migrate();
 }

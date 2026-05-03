@@ -1,3 +1,4 @@
+using System.Net;
 using Calendar.Core.Entities;
 using Calendar.Core.Exceptions;
 using Calendar.Core.Interfaces;
@@ -61,8 +62,8 @@ public class AppointmentService : IAppointmentService
 
     public async Task<ApiResult<AppointmentResponse>> CreateAsync(Guid userId, CreateAppointmentRequest request, CancellationToken ct = default)
     {
-        if (request.StartTime.Kind != DateTimeKind.Utc) request.StartTime = request.StartTime.ToUniversalTime();
-        if (request.EndTime.Kind != DateTimeKind.Utc) request.EndTime = request.EndTime.ToUniversalTime();
+        if (request.StartTime.Kind != DateTimeKind.Utc) request.StartTime = DateTime.SpecifyKind(request.StartTime, DateTimeKind.Utc);
+        if (request.EndTime.Kind != DateTimeKind.Utc) request.EndTime = DateTime.SpecifyKind(request.EndTime, DateTimeKind.Utc);
 
         // Conflict check on personal appointments
         var conflicts = await _appointmentRepository.GetConflictingAsync(userId, request.StartTime, request.EndTime, null, ct);
@@ -156,8 +157,8 @@ public class AppointmentService : IAppointmentService
             throw new DomainException("Chỉ người tạo cuộc họp mới có thể chỉnh sửa.");
         }
 
-        if (request.StartTime.Kind != DateTimeKind.Utc) request.StartTime = request.StartTime.ToUniversalTime();
-        if (request.EndTime.Kind != DateTimeKind.Utc) request.EndTime = request.EndTime.ToUniversalTime();
+        if (request.StartTime.Kind != DateTimeKind.Utc) request.StartTime = DateTime.SpecifyKind(request.StartTime, DateTimeKind.Utc);
+        if (request.EndTime.Kind != DateTimeKind.Utc) request.EndTime = DateTime.SpecifyKind(request.EndTime, DateTimeKind.Utc);
 
         var conflicts = await _appointmentRepository.GetConflictingAsync(userId, request.StartTime, request.EndTime, id, ct);
         if (conflicts.Any())
@@ -219,14 +220,14 @@ public class AppointmentService : IAppointmentService
             {
                 if (participant.User != null && !string.IsNullOrEmpty(participant.User.Email))
                 {
-                    var subject = $"[THÔNG BÁO HỦY] Cuộc họp: {meeting.Name}";
+                    var subject = $"[THÔNG BÁO HỦY] Cuộc họp: {WebUtility.HtmlEncode(meeting.Name)}";
                     var body = $@"
                         <div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
                             <h2 style='color: #d9534f;'>Thông báo hủy cuộc họp</h2>
-                            <p>Xin chào <strong>{participant.User.DisplayName ?? participant.User.Username}</strong>,</p>
+                            <p>Xin chào <strong>{WebUtility.HtmlEncode(participant.User.DisplayName ?? participant.User.Username)}</strong>,</p>
                             <p>Chúng tôi xin thông báo rằng cuộc họp nhóm sau đây đã bị hủy bởi người tổ chức:</p>
                             <div style='background-color: #f9f9f9; padding: 15px; border-left: 5px solid #d9534f; margin: 20px 0;'>
-                                <p style='margin: 5px 0;'><strong>Cuộc họp:</strong> {meeting.Name}</p>
+                                <p style='margin: 5px 0;'><strong>Cuộc họp:</strong> {WebUtility.HtmlEncode(meeting.Name)}</p>
                                 <p style='margin: 5px 0;'><strong>Thời gian dự kiến:</strong> {meeting.StartTime.ToLocalTime():dd/MM/yyyy HH:mm}</p>
                             </div>
                             <p>Cuộc họp này đã được gỡ bỏ khỏi lịch của bạn. Chúng tôi xin lỗi vì sự bất tiện này.</p>
@@ -480,7 +481,18 @@ public class AppointmentService : IAppointmentService
                 DisplayName = p.User?.DisplayName ?? p.User?.Username ?? "Unknown",
                 JoinedDate = p.JoinedDate
             }).ToList(),
-            Reminders = m.Reminders.Select(r => new ReminderDto { Id = r.Id, MinutesBefore = r.MinutesBefore, Type = r.Type }).ToList()
+            Reminders = m.Reminders.Select(r => new ReminderDto { Id = r.Id, MinutesBefore = r.MinutesBefore, Type = r.Type }).ToList(),
+            RecurrenceRule = m.RecurrenceRule == null ? null : new RecurrenceRuleDto
+            {
+                Id = m.RecurrenceRule.Id,
+                Type = m.RecurrenceRule.Type,
+                Interval = m.RecurrenceRule.Interval,
+                DayOfWeek = m.RecurrenceRule.DayOfWeek,
+                DayOfMonth = m.RecurrenceRule.DayOfMonth,
+                MonthOfYear = m.RecurrenceRule.MonthOfYear,
+                RecurrenceEndDate = m.RecurrenceRule.RecurrenceEndDate,
+                MaxOccurrences = m.RecurrenceRule.MaxOccurrences
+            }
         };
     }
 }

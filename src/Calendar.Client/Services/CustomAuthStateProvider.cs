@@ -80,6 +80,8 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
 
     private byte[] ParseBase64WithoutPadding(string base64)
     {
+        // Convert Base64URL to standard Base64
+        base64 = base64.Replace('-', '+').Replace('_', '/');
         switch (base64.Length % 4)
         {
             case 2: base64 += "=="; break;

@@ -41,12 +41,26 @@
     private bool _drawerOpen = true;
     private bool _isDarkMode = false;
     private MudThemeProvider _themeProvider;
-    private System.Threading.Timer? _reminderTimer;
+    private CancellationTokenSource? _reminderCts;
 
     protected override void OnInitialized()
     {
-        // Poll for reminders every 30 seconds
-        _reminderTimer = new System.Threading.Timer(async _ => await CheckReminders(), null, 5000, 30000);
+        _reminderCts = new CancellationTokenSource();
+        _ = StartReminderPollingAsync(_reminderCts.Token);
+    }
+
+    private async Task StartReminderPollingAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(5000, ct);
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await InvokeAsync(CheckReminders);
+            }
+        }
+        catch (OperationCanceledException) { }
     }
 
     private async Task CheckReminders()
@@ -85,7 +99,8 @@
 
     public void Dispose()
     {
-        _reminderTimer?.Dispose();
+        _reminderCts?.Cancel();
+        _reminderCts?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

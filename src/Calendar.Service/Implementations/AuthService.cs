@@ -2,7 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Calendar.Core.Entities;
-using Calendar.Core.Exceptions;
 using Calendar.Core.Interfaces;
 using Calendar.Service.Interfaces;
 using Calendar.Shared.Common;
@@ -27,12 +26,12 @@ public class AuthService : IAuthService
     {
         if (await _userRepository.ExistsAsync(request.Username, ct))
         {
-            throw new DuplicateUsernameException("Tên đăng nhập đã tồn tại.");
+            return ApiResult<AuthResponse>.Fail("Tên đăng nhập đã tồn tại.");
         }
 
         if (await _userRepository.EmailExistsAsync(request.Email, ct))
         {
-            throw new DuplicateUsernameException("Email đã tồn tại.");
+            return ApiResult<AuthResponse>.Fail("Email đã tồn tại.");
         }
 
         var user = new User
@@ -48,14 +47,15 @@ public class AuthService : IAuthService
         _userRepository.Add(user);
         await _userRepository.SaveChangesAsync(ct);
 
-        var token = GenerateJwtToken(user);
+        var expireDays = GetTokenExpireDays();
+        var token = GenerateJwtToken(user, expireDays);
 
         return ApiResult<AuthResponse>.Ok(new AuthResponse
         {
             Token = token,
             Username = user.Username,
             DisplayName = user.DisplayName,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
+            ExpiresAt = DateTime.UtcNow.AddDays(expireDays)
         });
     }
 
@@ -68,18 +68,22 @@ public class AuthService : IAuthService
             return ApiResult<AuthResponse>.Fail("Tên đăng nhập hoặc mật khẩu không chính xác.");
         }
 
-        var token = GenerateJwtToken(user);
+        var expireDays = GetTokenExpireDays();
+        var token = GenerateJwtToken(user, expireDays);
 
         return ApiResult<AuthResponse>.Ok(new AuthResponse
         {
             Token = token,
             Username = user.Username,
             DisplayName = user.DisplayName,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
+            ExpiresAt = DateTime.UtcNow.AddDays(expireDays)
         });
     }
 
-    private string GenerateJwtToken(User user)
+    private int GetTokenExpireDays() =>
+        int.TryParse(_configuration["Jwt:ExpireDays"], out var d) ? d : 7;
+
+    private string GenerateJwtToken(User user, int expireDays)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
         var key = Encoding.ASCII.GetBytes(jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key is missing"));
@@ -92,7 +96,7 @@ public class AuthService : IAuthService
                 new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
                 new Claim("DisplayName", user.DisplayName ?? "")
             }),
-            Expires = DateTime.UtcNow.AddDays(7),
+            Expires = DateTime.UtcNow.AddDays(expireDays),
             Issuer = jwtSettings["Issuer"],
             Audience = jwtSettings["Audience"],
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

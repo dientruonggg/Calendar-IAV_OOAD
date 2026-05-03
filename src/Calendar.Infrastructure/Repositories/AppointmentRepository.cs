@@ -33,7 +33,7 @@ public class AppointmentRepository : IAppointmentRepository
             .Include(x => x.Reminders)
             .Include(x => x.RecurrenceRule)
             .AsNoTracking()
-            .Where(x => x.UserId == userId && x.StartTime >= from && x.StartTime <= to)
+            .Where(x => x.UserId == userId && x.StartTime < to && x.EndTime > from)
             .OrderBy(x => x.StartTime)
             .ToListAsync(ct);
     }

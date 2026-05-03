@@ -15,6 +15,11 @@ public class DuplicateUsernameException : Exception
     public DuplicateUsernameException(string message) : base(message) { }
 }
 
+public class DuplicateEmailException : Exception
+{
+    public DuplicateEmailException(string message) : base(message) { }
+}
+
 public class DomainException : Exception
 {
     public DomainException(string message) : base(message) { }

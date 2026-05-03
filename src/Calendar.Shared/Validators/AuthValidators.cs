@@ -1,8 +1,9 @@
 using FluentValidation;
+using Calendar.Shared.DTOs.Auth;
 
 namespace Calendar.Shared.Validators;
 
-public class RegisterRequestValidator : AbstractValidator<DTOs.Auth.RegisterRequest>
+public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 {
     public RegisterRequestValidator()
     {
@@ -20,7 +21,7 @@ public class RegisterRequestValidator : AbstractValidator<DTOs.Auth.RegisterRequ
     }
 }
 
-public class LoginRequestValidator : AbstractValidator<DTOs.Auth.LoginRequest>
+public class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
     public LoginRequestValidator()
     {

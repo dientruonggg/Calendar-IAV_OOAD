@@ -14,7 +14,8 @@ builder.Services.AddScoped(sp =>
 {
     var handler = sp.GetRequiredService<TokenHandler>();
     handler.InnerHandler = new HttpClientHandler();
-    return new HttpClient(handler) { BaseAddress = new Uri("http://localhost:5091/") };
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+    return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
 });
 
 builder.Services.AddAuthorizationCore();

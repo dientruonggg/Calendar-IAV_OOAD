@@ -54,6 +54,10 @@ public class ExceptionHandlingMiddleware
                 context.Response.StatusCode = StatusCodes.Status409Conflict;
                 response.Message = duplicateException.Message;
                 break;
+            case DuplicateEmailException duplicateEmailException:
+                context.Response.StatusCode = StatusCodes.Status409Conflict;
+                response.Message = duplicateEmailException.Message;
+                break;
             case DomainException domainException:
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 response.Message = domainException.Message;

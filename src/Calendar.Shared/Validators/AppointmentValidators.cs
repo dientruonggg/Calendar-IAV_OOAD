@@ -1,8 +1,9 @@
 using FluentValidation;
+using Calendar.Shared.DTOs.Appointments;
 
 namespace Calendar.Shared.Validators;
 
-public class CreateAppointmentValidator : AbstractValidator<DTOs.Appointments.CreateAppointmentRequest>
+public class CreateAppointmentValidator : AbstractValidator<CreateAppointmentRequest>
 {
     public CreateAppointmentValidator()
     {
@@ -16,7 +17,7 @@ public class CreateAppointmentValidator : AbstractValidator<DTOs.Appointments.Cr
     }
 }
 
-public class UpdateAppointmentValidator : AbstractValidator<DTOs.Appointments.UpdateAppointmentRequest>
+public class UpdateAppointmentValidator : AbstractValidator<UpdateAppointmentRequest>
 {
     public UpdateAppointmentValidator()
     {
