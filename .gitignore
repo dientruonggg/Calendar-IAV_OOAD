@@ -388,3 +388,10 @@ FodyWeavers.xsd
 
 # AI Context
 AI_context/
+
+# Design Reference
+stitch_calendar_system_dashboard/
+.dotnet_home/
+calendar.db*
+*.db-shm
+*.db-wal

@@ -1,0 +1,194 @@
+@page "/appointments"
+@attribute [Authorize]
+@inject AppointmentService AppointmentService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <div class="d-flex align-center justify-space-between">
+            <MudText Typo="Typo.h5">
+                <MudIcon Icon="@Icons.Material.Filled.EventNote" Class="mr-2" Style="vertical-align: middle;" />
+                Cuộc hẹn
+            </MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="() => OpenAddDialog(DateTime.Now)">
+                Tạo cuộc hẹn
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="mx-auto d-block mt-8" />
+    }
+    else
+    {
+        @* Filters *@
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="string" @bind-Value="filterType" Label="Loại sự kiện" Variant="Variant.Outlined" Dense="true">
+                        <MudSelectItem Value="@("all")">Tất cả</MudSelectItem>
+                        <MudSelectItem Value="@("personal")">Cá nhân</MudSelectItem>
+                        <MudSelectItem Value="@("group")">Họp nhóm</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="string" @bind-Value="filterTime" Label="Thời gian" Variant="Variant.Outlined" Dense="true">
+                        <MudSelectItem Value="@("upcoming")">Sắp tới</MudSelectItem>
+                        <MudSelectItem Value="@("today")">Hôm nay</MudSelectItem>
+                        <MudSelectItem Value="@("week")">Tuần này</MudSelectItem>
+                        <MudSelectItem Value="@("month")">Tháng này</MudSelectItem>
+                        <MudSelectItem Value="@("all")">Tất cả</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4" Class="d-flex align-end">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyFilters" FullWidth="true">
+                        <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-1" /> Lọc
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* Appointment List *@
+        @if (!filteredAppointments.Any())
+        {
+            <MudPaper Class="pa-8 text-center" Elevation="1">
+                <MudIcon Icon="@Icons.Material.Filled.EventBusy" Style="font-size: 64px; opacity: 0.3;" />
+                <MudText Typo="Typo.h6" Style="opacity: 0.5;" Class="mt-2">Không có cuộc hẹn nào</MudText>
+            </MudPaper>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                @foreach (var appt in filteredAppointments)
+                {
+                    <MudPaper Class="pa-4" Elevation="1" Style="cursor: pointer; transition: box-shadow 0.2s;"
+                              @onclick="() => OpenDetailDialog(appt.Id)">
+                        <div class="d-flex align-center gap-3">
+                            <div style="width: 6px; height: 50px; border-radius: 3px; background: @(appt.IsGroupMeeting ? "linear-gradient(135deg, #7C3AED, #5B21B6)" : (appt.Color ?? "#3d532b")); flex-shrink: 0;"></div>
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.body1" Style="font-weight: 600;">
+                                    @if (appt.IsGroupMeeting) { <span>👥 </span> }
+                                    @appt.Name
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Default" Style="opacity: 0.7;">
+                                    <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="vertical-align: middle; margin-right: 4px;" />
+                                    @if (appt.IsAllDay)
+                                    {
+                                        @appt.StartTime.ToString("dd/MM/yyyy") <span> · Cả ngày</span>
+                                    }
+                                    else
+                                    {
+                                        @appt.StartTime.ToString("dd/MM/yyyy HH:mm") <span> - </span> @appt.EndTime.ToString("HH:mm")
+                                    }
+                                </MudText>
+                            </div>
+                            @if (appt.IsGroupMeeting)
+                            {
+                                <MudChip T="string" Color="Color.Secondary" Size="Size.Small" Style="background: #7C3AED; color: white;">
+                                    @appt.ParticipantCount người
+                                </MudChip>
+                            }
+                            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                        </div>
+                    </MudPaper>
+                }
+            </MudStack>
+        }
+    }
+</MudContainer>
+
+@code {
+    private List<AppointmentListResponse> allAppointments = new();
+    private List<AppointmentListResponse> filteredAppointments = new();
+    private bool isLoading = true;
+    private string filterType = "all";
+    private string filterTime = "upcoming";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        // Fetch a wide range of data (3 months)
+        var from = DateTime.Today.AddMonths(-1);
+        var to = DateTime.Today.AddMonths(2);
+
+        var res = await AppointmentService.GetByDateRangeAsync(from, to);
+        if (res.Success)
+        {
+            allAppointments = res.Data ?? new();
+        }
+        else
+        {
+            Snackbar.Add(res.Message, Severity.Error);
+        }
+
+        ApplyFilters();
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void ApplyFilters()
+    {
+        var result = allAppointments.AsEnumerable();
+
+        // Type filter
+        if (filterType == "personal")
+            result = result.Where(a => !a.IsGroupMeeting);
+        else if (filterType == "group")
+            result = result.Where(a => a.IsGroupMeeting);
+
+        // Time filter
+        var now = DateTime.Now;
+        if (filterTime == "upcoming")
+            result = result.Where(a => a.StartTime >= now);
+        else if (filterTime == "today")
+            result = result.Where(a => a.StartTime.Date == DateTime.Today);
+        else if (filterTime == "week")
+        {
+            int diff = (7 + (now.DayOfWeek - DayOfWeek.Monday)) % 7;
+            var weekStart = now.AddDays(-diff).Date;
+            result = result.Where(a => a.StartTime >= weekStart && a.StartTime < weekStart.AddDays(7));
+        }
+        else if (filterTime == "month")
+        {
+            var monthStart = new DateTime(now.Year, now.Month, 1);
+            result = result.Where(a => a.StartTime >= monthStart && a.StartTime < monthStart.AddMonths(1));
+        }
+
+        filteredAppointments = result.OrderBy(a => a.StartTime).ToList();
+        StateHasChanged();
+    }
+
+    private async Task OpenAddDialog(DateTime initialTime)
+    {
+        var parameters = new DialogParameters { ["InitialTime"] = initialTime };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<global::Calendar.Client.Components.AddAppointmentDialog>("Tạo cuộc hẹn mới", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task OpenDetailDialog(Guid appointmentId)
+    {
+        var parameters = new DialogParameters { ["AppointmentId"] = appointmentId };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<global::Calendar.Client.Components.AppointmentDetailDialog>("Chi tiết cuộc hẹn", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+}

@@ -1,0 +1,144 @@
+@page "/notifications"
+@attribute [Authorize]
+@inject AppointmentService AppointmentService
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <div class="d-flex align-center justify-space-between">
+            <MudText Typo="Typo.h5">
+                <MudIcon Icon="@Icons.Material.Filled.Notifications" Class="mr-2" Style="vertical-align: middle;" />
+                Thông báo
+            </MudText>
+            @if (notifications.Any())
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="MarkAllRead" Size="Size.Small">
+                    Đánh dấu tất cả đã đọc
+                </MudButton>
+            }
+        </div>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="mx-auto d-block mt-8" />
+    }
+    else if (!notifications.Any())
+    {
+        <MudPaper Class="pa-8 text-center" Elevation="1">
+            <MudIcon Icon="@Icons.Material.Filled.NotificationsNone" Style="font-size: 64px; opacity: 0.3;" />
+            <MudText Typo="Typo.h6" Style="opacity: 0.5;" Class="mt-2">Không có thông báo mới</MudText>
+            <MudText Typo="Typo.body2" Style="opacity: 0.4;" Class="mt-1">Các nhắc lịch sẽ xuất hiện ở đây</MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudStack Spacing="2">
+            @foreach (var notif in notifications)
+            {
+                <MudPaper Class="pa-4" Elevation="@(notif.IsRead ? 0 : 1)"
+                          Style="@($"border-left: 4px solid {(notif.IsRead ? "#c4c8bb" : "#3d532b")}; background: {(notif.IsRead ? "#faf3e7" : "#ffffff")}; transition: all 0.2s;")">
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon Icon="@GetNotifIcon(notif.Type)" 
+                                 Style="@($"color: {(notif.IsRead ? "#74796e" : "#3d532b")}; font-size: 28px;")" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body1" Style="@($"font-weight: {(notif.IsRead ? "400" : "600")};")">
+                                @notif.Title
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="opacity: 0.6;">
+                                @notif.Message
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="opacity: 0.4; margin-top: 2px;">
+                                @notif.Time.ToString("dd/MM/yyyy HH:mm")
+                            </MudText>
+                        </div>
+                        @if (!notif.IsRead)
+                        {
+                            <div style="width: 10px; height: 10px; border-radius: 50%; background: #3d532b; flex-shrink: 0;"></div>
+                        }
+                    </div>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+</MudContainer>
+
+@code {
+    private List<NotificationItem> notifications = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+
+        // Get upcoming appointments to generate reminder-like notifications
+        var from = DateTime.Today;
+        var to = DateTime.Today.AddDays(7);
+        var res = await AppointmentService.GetByDateRangeAsync(from, to);
+
+        if (res.Success && res.Data != null)
+        {
+            var now = DateTime.Now;
+            foreach (var appt in res.Data.OrderBy(a => a.StartTime))
+            {
+                var timeDiff = appt.StartTime - now;
+                string message;
+                string type;
+
+                if (appt.StartTime.Date == DateTime.Today)
+                {
+                    if (appt.IsAllDay)
+                        message = "Sự kiện cả ngày hôm nay";
+                    else
+                        message = $"Hôm nay lúc {appt.StartTime:HH:mm}";
+                    type = "today";
+                }
+                else if (timeDiff.TotalDays < 1)
+                {
+                    message = $"Sắp diễn ra trong {(int)timeDiff.TotalHours} giờ nữa";
+                    type = "soon";
+                }
+                else
+                {
+                    message = $"Diễn ra vào {appt.StartTime:dd/MM} lúc {(appt.IsAllDay ? "cả ngày" : appt.StartTime.ToString("HH:mm"))}";
+                    type = "upcoming";
+                }
+
+                notifications.Add(new NotificationItem
+                {
+                    Title = $"{(appt.IsGroupMeeting ? "👥 " : "")}{appt.Name}",
+                    Message = message,
+                    Time = appt.StartTime,
+                    Type = type,
+                    IsRead = appt.StartTime < now
+                });
+            }
+        }
+
+        isLoading = false;
+    }
+
+    private void MarkAllRead()
+    {
+        foreach (var n in notifications) n.IsRead = true;
+        Snackbar.Add("Đã đánh dấu tất cả thông báo đã đọc", Severity.Info);
+        StateHasChanged();
+    }
+
+    private string GetNotifIcon(string type) => type switch
+    {
+        "today" => Icons.Material.Filled.Alarm,
+        "soon" => Icons.Material.Filled.AlarmOn,
+        "upcoming" => Icons.Material.Filled.Event,
+        _ => Icons.Material.Filled.Notifications
+    };
+
+    private class NotificationItem
+    {
+        public string Title { get; set; } = "";
+        public string Message { get; set; } = "";
+        public DateTime Time { get; set; }
+        public string Type { get; set; } = "";
+        public bool IsRead { get; set; }
+    }
+}

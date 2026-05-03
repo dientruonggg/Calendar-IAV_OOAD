@@ -1,0 +1,120 @@
+@page "/settings"
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h5">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" Style="vertical-align: middle;" />
+            Cài đặt
+        </MudText>
+    </MudPaper>
+
+    @* Profile Section *@
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-1" Style="vertical-align: middle;" />
+            Thông tin cá nhân
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="displayName" Label="Tên hiển thị" Variant="Variant.Outlined" 
+                              ReadOnly="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Badge" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="username" Label="Tên đăng nhập" Variant="Variant.Outlined" 
+                              ReadOnly="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AccountCircle" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @* Notification Settings *@
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Class="mr-1" Style="vertical-align: middle;" />
+            Cài đặt thông báo
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudStack Spacing="2">
+            <MudSwitch @bind-Value="enableNotifications" Label="Bật thông báo nhắc lịch" Color="Color.Primary" />
+            <MudSwitch @bind-Value="enableEmailNotifications" Label="Nhận thông báo qua Email" Color="Color.Primary" />
+            <MudSwitch @bind-Value="enableSound" Label="Âm thanh thông báo" Color="Color.Primary" />
+            <MudSelect T="int" @bind-Value="defaultReminderMinutes" Label="Thời gian nhắc mặc định" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="5">5 phút trước</MudSelectItem>
+                <MudSelectItem Value="10">10 phút trước</MudSelectItem>
+                <MudSelectItem Value="15">15 phút trước</MudSelectItem>
+                <MudSelectItem Value="30">30 phút trước</MudSelectItem>
+                <MudSelectItem Value="60">1 giờ trước</MudSelectItem>
+                <MudSelectItem Value="1440">1 ngày trước</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+    </MudPaper>
+
+    @* Display Settings *@
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Palette" Class="mr-1" Style="vertical-align: middle;" />
+            Giao diện
+        </MudText>
+        <MudDivider Class="mb-3" />
+        <MudStack Spacing="2">
+            <MudSelect T="string" @bind-Value="defaultView" Label="Chế độ xem mặc định" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="@("Daily")">Ngày</MudSelectItem>
+                <MudSelectItem Value="@("Weekly")">Tuần</MudSelectItem>
+                <MudSelectItem Value="@("Monthly")">Tháng</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="string" @bind-Value="defaultColor" Label="Màu mặc định cho cuộc hẹn" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="@("#3d532b")">Xanh lá đậm</MudSelectItem>
+                <MudSelectItem Value="@("#526438")">Xanh lá nhạt</MudSelectItem>
+                <MudSelectItem Value="@("#564b33")">Nâu đất</MudSelectItem>
+                <MudSelectItem Value="@("#1976d2")">Xanh dương</MudSelectItem>
+                <MudSelectItem Value="@("#D32F2F")">Đỏ</MudSelectItem>
+                <MudSelectItem Value="@("#7B1FA2")">Tím</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="string" @bind-Value="firstDayOfWeek" Label="Ngày đầu tuần" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem Value="@("Monday")">Thứ Hai</MudSelectItem>
+                <MudSelectItem Value="@("Sunday")">Chủ Nhật</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+    </MudPaper>
+
+    @* Save Button *@
+    <div class="d-flex justify-end mb-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.Save" OnClick="SaveSettings">
+            Lưu cài đặt
+        </MudButton>
+    </div>
+</MudContainer>
+
+@code {
+    private string displayName = "";
+    private string username = "";
+    private bool enableNotifications = true;
+    private bool enableEmailNotifications = false;
+    private bool enableSound = true;
+    private int defaultReminderMinutes = 15;
+    private string defaultView = "Weekly";
+    private string defaultColor = "#3d532b";
+    private string firstDayOfWeek = "Monday";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            displayName = user.FindFirst("DisplayName")?.Value ?? user.Identity?.Name ?? "Người dùng";
+            username = user.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "";
+        }
+    }
+
+    private void SaveSettings()
+    {
+        // In a real app, these would be saved to the backend or localStorage
+        Snackbar.Add("Đã lưu cài đặt thành công! ✅", Severity.Success);
+    }
+}

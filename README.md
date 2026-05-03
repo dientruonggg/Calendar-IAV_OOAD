@@ -1,74 +1,66 @@
 # Calendar System - OOAD Project
 
-Đây là dự án hệ thống Lịch (Calendar System) sử dụng kiến trúc Clean Architecture (N-Layer), frontend Blazor WebAssembly, và backend ASP.NET Core Web API. Cơ sở dữ liệu đang sử dụng là SQLite.
+Đây là hệ thống Lịch (Calendar System) được xây dựng theo kiến trúc **Clean Architecture (N-Layer)**, tích hợp thiết kế hiện đại **Organic Productivity**. Hệ thống sử dụng Blazor WebAssembly cho frontend và ASP.NET Core Web API cho backend với cơ sở dữ liệu SQLite.
 
-## Cấu trúc thư mục (Clean Architecture)
+## 🌿 Design System: Organic Productivity
 
-- `src/Calendar.API`: Backend API (ASP.NET Core Web API). Chứa các endpoint điều hướng cho hệ thống.
-- `src/Calendar.Client`: Frontend App (Blazor WebAssembly). Giao diện người dùng.
-- `src/Calendar.Core`: Tầng chứa Domain Entities (Các thực thể cốt lõi) và Interfaces.
-- `src/Calendar.Infrastructure`: Tầng Data Access (Entity Framework Core, SQLite) và các dịch vụ giao tiếp bên ngoài (như EmailService).
-- `src/Calendar.Service`: Tầng Business Logic chứa các Services xử lý nghiệp vụ của hệ thống (như AppointmentService).
-- `src/Calendar.Shared`: Các DTOs (Data Transfer Objects) dùng chung cho cả API và Client.
+Dự án đã được cập nhật giao diện hoàn toàn mới dựa trên triết lý "Organic Productivity", tập trung vào trải nghiệm người dùng nhẹ nhàng, hiệu quả và thẩm mỹ:
+- **Bảng màu Earthy**: Sử dụng các tông màu xanh lá cây đậm (Primary: `#3d532b`), xanh olive (Secondary: `#526438`) và màu kem (Surface: `#faf3e7`).
+- **Typography**: Sử dụng font **Inter** hiện đại cho khả năng đọc tối ưu.
+- **Micro-interactions**: Các hiệu ứng hover, chuyển cảnh mượt mà và bo góc lớn (Radius: 12px-24px) tạo cảm giác cao cấp.
+- **Dashboard**: Trang chủ tích hợp widgets thống kê, lịch trình sắp tới và biểu đồ năng suất.
 
-## Yêu cầu hệ thống (Prerequisites)
+## 🚀 Công nghệ sử dụng (Tech Stack)
 
-Để chạy dự án, máy tính cần cài đặt:
-- [.NET 8 SDK](https://dotnet.microsoft.com/download) (Hoặc phiên bản .NET mới nhất tương ứng với dự án).
-- IDE khuyên dùng: Visual Studio 2022, JetBrains Rider, hoặc Visual Studio Code.
-- Cài đặt công cụ Entity Framework Core: `dotnet tool install --global dotnet-ef`
+- **Frontend**: Blazor WebAssembly (.NET 10)
+- **UI Framework**: [MudBlazor 9.2.0](https://mudblazor.com/)
+- **Backend**: ASP.NET Core Web API
+- **Database**: SQLite with Entity Framework Core
+- **Authentication**: JWT-based Auth (Bearer Token)
+- **Styling**: Vanilla CSS + MudBlazor Theme Provider
 
-## Hướng dẫn cài đặt và chạy ứng dụng
+## 📁 Cấu trúc thư mục
 
-### 1. Phục hồi các packages
-Mở terminal/command prompt tại thư mục gốc của dự án (`Calendar_OOAD`), chạy lệnh sau để tải các packages cần thiết:
+- `src/Calendar.API`: Backend API xử lý logic và điều hướng.
+- `src/Calendar.Client`: Frontend App chứa toàn bộ giao diện người dùng và trạng thái.
+- `src/Calendar.Core`: Domain Entities, Interfaces và Enums cốt lõi.
+- `src/Calendar.Infrastructure`: Data Access (EF Core, SQLite) và External Services (Email).
+- `src/Calendar.Service`: Business Logic Layer xử lý nghiệp vụ.
+- `src/Calendar.Shared`: DTOs dùng chung giữa API và Client.
+
+## 🛠️ Hướng dẫn cài đặt và chạy ứng dụng
+
+### 1. Phục hồi Packages
 ```bash
 dotnet restore Calendar_OOAD.sln
 ```
 
-### 2. Cập nhật cơ sở dữ liệu (Database Migration)
-Dự án sử dụng SQLite. Cần chạy lệnh Update Database để tạo các bảng trong cơ sở dữ liệu dựa trên file Migration.
-Điều hướng vào thư mục API:
+### 2. Cập nhật Cơ sở dữ liệu
 ```bash
 cd src/Calendar.API
-```
-Chạy lệnh update:
-```bash
 dotnet ef database update --project ../Calendar.Infrastructure
 ```
 
-### 3. Cấu hình Email (Bắt buộc để gửi thông báo)
-Mở file `src/Calendar.API/appsettings.json`, tìm đến phần `"SmtpSettings"` và thay thế `"SenderEmail"` và `"Password"` bằng tài khoản email và [App Password (Mật khẩu ứng dụng)](https://support.google.com/accounts/answer/185833?hl=vi):
-```json
-  "SmtpSettings": {
-    "Server": "smtp.gmail.com",
-    "Port": 587,
-    "SenderName": "Calendar App",
-    "SenderEmail": "your-email@gmail.com",
-    "Password": "your-app-password"
-  }
-```
-
-### 4. Chạy Backend API
-Từ thư mục gốc hoặc thư mục `src/Calendar.API`, chạy Backend API:
+### 3. Chạy Backend API (Terminal 1)
 ```bash
 cd src/Calendar.API
 dotnet run
 ```
-Sau khi chạy, API thường sẽ lắng nghe ở cổng `https://localhost:7000` hoặc `http://localhost:5000` (có thể kiểm tra ở terminal).
-*Chú ý: Đảm bảo giữ terminal chạy API để Frontend có thể gọi dữ liệu.*
+*Mặc định lắng nghe tại: `http://localhost:5031` (hoặc cổng cấu hình trong launchSettings.json)*
 
-### 5. Chạy Frontend Client
-Mở một terminal khác (terminal thứ hai), điều hướng tới thư mục `src/Calendar.Client` và chạy dự án Blazor WebAssembly:
+### 4. Chạy Frontend Client (Terminal 2)
 ```bash
 cd src/Calendar.Client
 dotnet run
 ```
-Terminal sẽ hiển thị đường link để truy cập vào ứng dụng trên trình duyệt (thường là `https://localhost:7001` hoặc tương tự). 
-Click vào link để mở và sử dụng hệ thống Lịch.
+*Mặc định truy cập tại: `http://localhost:5137`*
 
-## Các chức năng chính (Các luồng công việc đã hoàn thiện)
-- Quản lý cuộc hẹn và lịch trình (Appointments/Meetings).
-- Cơ chế gửi thông báo Email tự động cho các thành viên tham gia hoặc khi bị hủy.
-- Quản lý trạng thái và luồng Hủy lịch/Rời khỏi lịch.
-- Giao diện người dùng Web App tích hợp API backend theo thời gian thực.
+## ✨ Các chức năng chính
+- **Dashboard thông minh**: Thống kê cuộc hẹn, xem nhanh lịch trình và lời nhắc.
+- **Calendar Views đa dạng**: Hỗ trợ xem theo Ngày (Daily), Tuần (Weekly) và Tháng (Monthly) với logic hiển thị sự kiện cả ngày (All-day) chuyên nghiệp.
+- **Quản lý cuộc hẹn**: Tạo, chỉnh sửa, xóa và tham gia các cuộc họp nhóm.
+- **Thông báo & Nhắc nhở**: Hệ thống email tự động và thông báo trong ứng dụng.
+- **Cài đặt cá nhân**: Tùy chỉnh màu sắc lịch và thông tin tài khoản.
+
+---
+*Dự án được thực hiện cho môn học OOAD (Object-Oriented Analysis and Design).*

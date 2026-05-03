@@ -1,0 +1,325 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager NavigationManager
+@inject global::Calendar.Client.Services.AuthService AuthService
+@inject global::Calendar.Client.Services.AppointmentService AppointmentService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+<MudThemeProvider @ref="@_themeProvider" @bind-IsDarkMode="@_isDarkMode" Theme="OrganicTheme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="0">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudText Typo="Typo.h6" Class="ml-3" Style="font-weight: 600; color: var(--primary);">Calendar App</MudText>
+        <MudSpacer />
+        
+        <AuthorizeView>
+            <Authorized>
+                <MudButton Color="Color.Inherit" OnClick="Logout" StartIcon="@Icons.Material.Filled.Logout">Đăng xuất</MudButton>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Color="Color.Inherit" Href="/login">Đăng nhập</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="0" ClipMode="DrawerClipMode.Always">
+        <NavMenu />
+    </MudDrawer>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = false;
+    private MudThemeProvider _themeProvider;
+    private CancellationTokenSource? _reminderCts;
+
+    protected override void OnInitialized()
+    {
+        _reminderCts = new CancellationTokenSource();
+        _ = StartReminderPollingAsync(_reminderCts.Token);
+    }
+
+    private async Task StartReminderPollingAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(5000, ct);
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await InvokeAsync(CheckReminders);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task CheckReminders()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (!(authState.User.Identity?.IsAuthenticated ?? false)) return;
+
+        var result = await AppointmentService.GetDueRemindersAsync();
+        if (result.Success && result.Data?.Any() == true)
+        {
+            foreach (var reminder in result.Data)
+            {
+                Snackbar.Add($"[NHẮC LỊCH] {reminder.AppointmentName} lúc {reminder.StartTime.ToLocalTime():HH:mm}", 
+                    Severity.Info, config => {
+                        config.Icon = Icons.Material.Filled.Alarm;
+                    });
+            }
+        }
+    }
+
+    private void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void ToggleDarkMode()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+    
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        _reminderCts?.Cancel();
+        _reminderCts?.Dispose();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Removed GetSystemPreference to avoid MudBlazor compatibility errors
+        }
+    }
+
+    // Organic Productivity Design System Theme
+    private MudTheme OrganicTheme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            // Primary
+            Primary = "#3d532b",
+            PrimaryDarken = "#2a3b1e",
+            PrimaryLighten = "#546b41",
+            PrimaryContrastText = "#ffffff",
+
+            // Secondary
+            Secondary = "#526438",
+            SecondaryDarken = "#3b4c23",
+            SecondaryLighten = "#b9ce98",
+            SecondaryContrastText = "#ffffff",
+
+            // Tertiary
+            Tertiary = "#564b33",
+            TertiaryDarken = "#3d3524",
+            TertiaryLighten = "#d5c5a5",
+            TertiaryContrastText = "#ffffff",
+
+            // Info / Success / Warning / Error
+            Info = "#4e653c",
+            Success = "#526438",
+            Warning = "#564b33",
+            Error = "#ba1a1a",
+            ErrorContrastText = "#ffffff",
+
+            // AppBar
+            AppbarBackground = "#ffffff",
+            AppbarText = "#1e1b14",
+
+            // Drawer
+            DrawerBackground = "#ffffff",
+            DrawerText = "#44483f",
+            DrawerIcon = "#44483f",
+
+            // Background & Surface
+            Background = "#fff9ef",
+            Surface = "#ffffff",
+
+            // Text
+            TextPrimary = "#1e1b14",
+            TextSecondary = "#44483f",
+            TextDisabled = "#74796e",
+
+            // Action
+            ActionDefault = "#44483f",
+            ActionDisabled = "#c4c8bb",
+            ActionDisabledBackground = "#e8e2d6",
+
+            // Lines & Dividers
+            Divider = "#c4c8bb",
+            DividerLight = "rgba(196, 200, 187, 0.3)",
+
+            // Table
+            TableLines = "#c4c8bb",
+            TableStriped = "#faf3e7",
+            TableHover = "#f4ede1",
+
+            // Hover
+            HoverOpacity = 0.06
+        },
+        PaletteDark = new PaletteDark()
+        {
+            Primary = "#b5cf9c",
+            PrimaryDarken = "#8aad6d",
+            PrimaryLighten = "#d0ebb7",
+            PrimaryContrastText = "#0d2001",
+
+            Secondary = "#b9ce98",
+            SecondaryContrastText = "#111f00",
+
+            Tertiary = "#d5c5a5",
+            TertiaryContrastText = "#231b06",
+
+            Error = "#ffb4ab",
+
+            Background = "#1e1b14",
+            Surface = "#333028",
+
+            AppbarBackground = "#333028",
+            AppbarText = "#f7f0e4",
+
+            DrawerBackground = "#333028",
+            DrawerText = "#e8e2d6",
+            DrawerIcon = "#e8e2d6",
+
+            TextPrimary = "#f7f0e4",
+            TextSecondary = "#c4c8bb",
+            TextDisabled = "#74796e",
+
+            ActionDefault = "#c4c8bb",
+            Divider = "#44483f",
+            DividerLight = "rgba(68, 72, 63, 0.3)",
+        },
+        Typography = new Typography()
+        {
+            Default = 
+            {
+                FontFamily = new[] { "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif" },
+                FontSize = "14px",
+                FontWeight = "400",
+                LineHeight = "1.5",
+                LetterSpacing = "0"
+            },
+            H1 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "32px",
+                FontWeight = "600",
+                LineHeight = "1.2",
+                LetterSpacing = "-0.02em"
+            },
+            H2 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "24px",
+                FontWeight = "600",
+                LineHeight = "1.3",
+                LetterSpacing = "-0.01em"
+            },
+            H3 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "20px",
+                FontWeight = "500",
+                LineHeight = "1.4",
+                LetterSpacing = "0"
+            },
+            H4 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "18px",
+                FontWeight = "600",
+                LineHeight = "1.4",
+                LetterSpacing = "0"
+            },
+            H5 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "16px",
+                FontWeight = "600",
+                LineHeight = "1.4",
+                LetterSpacing = "-0.01em"
+            },
+            H6 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "14px",
+                FontWeight = "600",
+                LineHeight = "1.4",
+                LetterSpacing = "0"
+            },
+            Body1 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "14px",
+                FontWeight = "400",
+                LineHeight = "1.5",
+                LetterSpacing = "0"
+            },
+            Body2 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "12px",
+                FontWeight = "400",
+                LineHeight = "1.5",
+                LetterSpacing = "0"
+            },
+            Caption = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "11px",
+                FontWeight = "500",
+                LineHeight = "1",
+                LetterSpacing = "0"
+            },
+            Button = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "12px",
+                FontWeight = "600",
+                LineHeight = "1",
+                LetterSpacing = "0.05em",
+                TextTransform = "none"
+            },
+            Subtitle1 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "16px",
+                FontWeight = "400",
+                LineHeight = "1.6",
+                LetterSpacing = "0"
+            },
+            Subtitle2 = 
+            {
+                FontFamily = new[] { "Inter" },
+                FontSize = "14px",
+                FontWeight = "500",
+                LineHeight = "1.5",
+                LetterSpacing = "0"
+            }
+        },
+        LayoutProperties = new LayoutProperties()
+        {
+            DefaultBorderRadius = "8px",
+            DrawerWidthLeft = "260px"
+        }
+    };
+}

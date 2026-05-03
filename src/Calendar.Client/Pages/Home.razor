@@ -1,0 +1,281 @@
+@page "/"
+@attribute [Authorize]
+@inject AppointmentService AppointmentService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudGrid>
+        @* ===== Calendar Section (3/4 width) ===== *@
+        <MudItem xs="12" lg="9">
+            <div class="d-flex align-center pa-4 mb-4" style="background: var(--surface-container-lowest); border-radius: var(--radius-lg); border: 1px solid var(--outline-variant); box-shadow: var(--shadow-level1);">
+                <div class="d-flex align-center gap-2">
+                    <MudButton Variant="Variant.Outlined" OnClick="SetToday" Style="border-radius: var(--radius-md); text-transform: none; font-weight: 600;">Hôm nay</MudButton>
+                    <div class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="Previous" Color="Color.Default" />
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="Next" Color="Color.Default" />
+                    </div>
+                </div>
+
+                <MudText Typo="Typo.h5" Class="ml-4 flex-grow-1" Style="font-weight: 700; color: var(--on-surface); letter-spacing: -0.01em;">
+                    @GetViewTitle()
+                </MudText>
+                
+                <div class="d-flex align-center gap-4">
+                    <MudToggleGroup T="string" @bind-Value="CurrentView" Delimiters="false" Color="Color.Primary" SelectionMode="SelectionMode.SingleSelection"
+                                    Style="background: var(--surface-container-low); border-radius: var(--radius-md); padding: 2px;">
+                        <MudToggleItem Value="@("Weekly")" Text="Tuần" Class="px-4" />
+                        <MudToggleItem Value="@("Monthly")" Text="Tháng" Class="px-4" />
+                    </MudToggleGroup>
+                    
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
+                                OnClick="() => OpenAddDialog(DateTime.Now)" 
+                                Style="border-radius: var(--radius-md); text-transform: none; font-weight: 600; padding: 8px 20px;">Tạo cuộc hẹn</MudButton>
+                </div>
+            </div>
+
+            <MudPaper Class="pa-4" Elevation="1">
+                @if (isLoading)
+                {
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="mx-auto" />
+                }
+                else
+                {
+                    @if (CurrentView == "Weekly")
+                    {
+                        <WeeklyView CurrentDate="currentDate" Appointments="appointments" OnSlotClick="OpenAddDialog" OnEventClick="OpenDetailDialog" />
+                    }
+                    else if (CurrentView == "Monthly")
+                    {
+                        <MonthlyView CurrentDate="currentDate" Appointments="appointments" OnSlotClick="OpenAddDialog" OnEventClick="OpenDetailDialog" />
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* ===== Sidebar Summary (1/4 width) ===== *@
+        <MudItem xs="12" lg="3">
+            @* Today's Schedule *@
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Today" Class="mr-1" Style="vertical-align: middle;" />
+                    Lịch trình hôm nay
+                </MudText>
+                @if (todayAppointments.Any())
+                {
+                    <MudStack Spacing="2">
+                        @foreach (var appt in todayAppointments.Take(5))
+                        {
+                            <MudPaper Class="pa-3" Elevation="0" Style="@($"border-left: 4px solid {(appt.Color ?? "#3d532b")}; background: #faf3e7; cursor: pointer; border-radius: 8px;")"
+                                      @onclick="() => OpenDetailDialog(appt.Id)">
+                                <MudText Typo="Typo.caption" Style="font-weight: 600;">
+                                    @if (appt.IsAllDay)
+                                    {
+                                        <span>Cả ngày</span>
+                                    }
+                                    else
+                                    {
+                                        @appt.StartTime.ToString("HH:mm") <span> - </span> @appt.EndTime.ToString("HH:mm")
+                                    }
+                                </MudText>
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                                    @if (appt.IsGroupMeeting) { <span>👥 </span> }
+                                    @appt.Name
+                                </MudText>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Default" Style="opacity: 0.6; text-align: center; padding: 16px 0;">
+                        <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Style="font-size: 32px; opacity: 0.4;" />
+                        <br />
+                        Không có sự kiện hôm nay
+                    </MudText>
+                }
+            </MudPaper>
+
+            @* Upcoming Events *@
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Upcoming" Class="mr-1" Style="vertical-align: middle;" />
+                    Sắp tới
+                </MudText>
+                @if (upcomingAppointments.Any())
+                {
+                    <MudStack Spacing="2">
+                        @foreach (var appt in upcomingAppointments.Take(4))
+                        {
+                            <MudPaper Class="pa-3" Elevation="0" Style="@($"border-left: 4px solid {(appt.Color ?? "#526438")}; background: #f4ede1; cursor: pointer; border-radius: 8px;")"
+                                      @onclick="() => OpenDetailDialog(appt.Id)">
+                                <MudText Typo="Typo.caption" Color="Color.Default" Style="opacity: 0.7;">
+                                    @appt.StartTime.ToString("dd/MM") · 
+                                    @if (appt.IsAllDay) { <span>Cả ngày</span> } else { @appt.StartTime.ToString("HH:mm") }
+                                </MudText>
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                                    @if (appt.IsGroupMeeting) { <span>👥 </span> }
+                                    @appt.Name
+                                </MudText>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Style="opacity: 0.6; text-align: center; padding: 12px 0;">
+                        Không có sự kiện sắp tới
+                    </MudText>
+                }
+            </MudPaper>
+
+            @* Stats *@
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-1" Style="vertical-align: middle;" />
+                    Thống kê tuần này
+                </MudText>
+                <MudGrid>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3 text-center" Elevation="0" Style="background: #d5eab2; border-radius: 8px;">
+                            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #3d532b;">@weeklyCount</MudText>
+                            <MudText Typo="Typo.caption" Style="color: #44483f;">Cuộc hẹn</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="pa-3 text-center" Elevation="0" Style="background: #f1e1c0; border-radius: 8px;">
+                            <MudText Typo="Typo.h4" Style="font-weight: 700; color: #564b33;">@meetingCount</MudText>
+                            <MudText Typo="Typo.caption" Style="color: #44483f;">Họp nhóm</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private DateTime currentDate = DateTime.Today;
+    private string CurrentView { get; set; } = "Weekly";
+    private List<AppointmentListResponse> appointments = new();
+    private List<AppointmentListResponse> todayAppointments = new();
+    private List<AppointmentListResponse> upcomingAppointments = new();
+    private int weeklyCount = 0;
+    private int meetingCount = 0;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        DateTime from, to;
+        if (CurrentView == "Weekly")
+        {
+            int diff = (7 + (currentDate.DayOfWeek - DayOfWeek.Monday)) % 7;
+            from = currentDate.AddDays(-1 * diff).Date;
+            to = from.AddDays(7).AddSeconds(-1);
+        }
+        else
+        {
+            from = new DateTime(currentDate.Year, currentDate.Month, 1);
+            to = from.AddMonths(1).AddSeconds(-1);
+        }
+
+        var res = await AppointmentService.GetByDateRangeAsync(from, to);
+        if (res.Success)
+        {
+            appointments = res.Data ?? new();
+        }
+        else
+        {
+            Snackbar.Add(res.Message, Severity.Error);
+        }
+
+        // Today's schedule
+        todayAppointments = appointments
+            .Where(a => a.StartTime.Date == DateTime.Today || (a.IsAllDay && a.StartTime.Date <= DateTime.Today && a.EndTime.Date >= DateTime.Today))
+            .OrderBy(a => a.IsAllDay ? 0 : 1)
+            .ThenBy(a => a.StartTime)
+            .ToList();
+
+        // Upcoming (next 7 days, excluding today)
+        var tomorrow = DateTime.Today.AddDays(1);
+        var nextWeek = DateTime.Today.AddDays(7);
+        upcomingAppointments = appointments
+            .Where(a => a.StartTime.Date >= tomorrow && a.StartTime.Date <= nextWeek)
+            .OrderBy(a => a.StartTime)
+            .ToList();
+
+        // Stats
+        int diff2 = (7 + (DateTime.Today.DayOfWeek - DayOfWeek.Monday)) % 7;
+        var weekStart = DateTime.Today.AddDays(-1 * diff2).Date;
+        var weekEnd = weekStart.AddDays(7);
+        weeklyCount = appointments.Count(a => a.StartTime >= weekStart && a.StartTime < weekEnd && !a.IsGroupMeeting);
+        meetingCount = appointments.Count(a => a.StartTime >= weekStart && a.StartTime < weekEnd && a.IsGroupMeeting);
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task Previous()
+    {
+        if (CurrentView == "Weekly") currentDate = currentDate.AddDays(-7);
+        else currentDate = currentDate.AddMonths(-1);
+        await LoadData();
+    }
+
+    private async Task Next()
+    {
+        if (CurrentView == "Weekly") currentDate = currentDate.AddDays(7);
+        else currentDate = currentDate.AddMonths(1);
+        await LoadData();
+    }
+
+    private async Task SetToday()
+    {
+        currentDate = DateTime.Today;
+        await LoadData();
+    }
+
+    private string GetViewTitle()
+    {
+        if (CurrentView == "Weekly")
+        {
+            int diff = (7 + (currentDate.DayOfWeek - DayOfWeek.Monday)) % 7;
+            var start = currentDate.AddDays(-1 * diff).Date;
+            return $"{start:dd/MM} - {start.AddDays(6):dd/MM/yyyy}";
+        }
+        return currentDate.ToString("MM/yyyy");
+    }
+
+    private async Task OpenAddDialog(DateTime initialTime)
+    {
+        var parameters = new DialogParameters { ["InitialTime"] = initialTime };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<global::Calendar.Client.Components.AddAppointmentDialog>("Tạo cuộc hẹn mới", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task OpenDetailDialog(Guid appointmentId)
+    {
+        var parameters = new DialogParameters { ["AppointmentId"] = appointmentId };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true };
+        var dialog = await DialogService.ShowAsync<global::Calendar.Client.Components.AppointmentDetailDialog>("Chi tiết cuộc hẹn", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await LoadData();
+        }
+    }
+}
